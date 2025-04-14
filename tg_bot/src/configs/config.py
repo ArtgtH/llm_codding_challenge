@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_NAME: str
 
+    RABBITMQ_URL: str
+    RABBITMQ_EXCHANGE: str
+    RABBITMQ_MESSAGE_QUEUE: str
+
     BOT_TOKEN: str
 
     @property

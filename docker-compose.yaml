@@ -1,6 +1,15 @@
 services:
   tg_bot:
     build: ./tg_bot
+    environment:
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      RABBITMQ_MESSAGE_QUEUE: "message_q"
+      RABBITMQ_EXCHANGE: "agronom"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - dev
 
@@ -13,8 +22,31 @@ services:
       POSTGRES_PASSWORD: "postgres"
       POSTGRES_DB: "AGRONOM"
       PGDATA: "/var/lib/postgresql/data/pgdata"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dev
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - dev
 
@@ -23,4 +55,6 @@ networks:
 
 volumes:
   postgres_data:
+  rabbitmq_data:
+
 
