@@ -1,3 +1,4 @@
+import json
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,7 +18,6 @@ class RabbitMQService:
     @asynccontextmanager
     async def connect(self):
         try:
-            logger.critical(f"Connecting to RabbitMQ server {self.rabbit_url}")
             self.connection = await aio_pika.connect_robust(self.rabbit_url)
             self.channel = await self.connection.channel()
             yield self
@@ -25,10 +25,18 @@ class RabbitMQService:
             if self.connection and not self.connection.is_closed:
                 await self.connection.close()
 
-    async def send_message(self, message):
+    async def send_message(self, chat_id: str, chat_title: str, user: str, text: str):
+        message = {
+            "chat_id": chat_id,
+            "chat_title": chat_title,
+            "user": user,
+            "message": text,
+        }
+        json_message = json.dumps(message)
+
         await self.channel.declare_queue(self.queue, durable=True)
         await self.channel.default_exchange.publish(
             routing_key=self.queue,
-            message=aio_pika.Message(body=message.encode()),
+            message=aio_pika.Message(body=json_message.encode()),
         )
-        logger.info(f"Sent message to {self.queue}")
+        logger.info(f"Send msg [{text}] in {self.queue}")

@@ -11,11 +11,9 @@ class Settings(BaseSettings):
     RABBITMQ_URL: str
     RABBITMQ_MESSAGE_QUEUE: str
 
-    BOT_TOKEN: str
-
     @property
-    def DATABASE_URL_asyncpg(self):
-        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def DATABASE_URL(self):
+        return f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     model_config = SettingsConfigDict(env_file=".env")
 
