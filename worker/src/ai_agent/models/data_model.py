@@ -1,4 +1,4 @@
-from datetime import date as Date
+from datetime import date
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 import json
@@ -8,7 +8,7 @@ class AgriculturalOperation(BaseModel):
     """
     Model representing agricultural operation data with daily and cumulative metrics.
     """
-    date: Date = Field(description="Дата проведения операции")
+    date: date = Field(description="Дата проведения операции")
     subdivision: str = Field(description="Подразделение, выполняющее операцию")
     operation: str = Field(description="Тип проводимой операции")
     crop: str = Field(description="Сельскохозяйственная культура")

@@ -204,7 +204,7 @@ class AnalysisPipeline:
         self.extra_data = load_extra_data(EXTRA_DATA_PATH)
         self.model_schema = AgriculturalOperation.get_schema_for_prompt()
 
-    def analyze_text(self, text: str) -> List[AgriculturalOperation]:
+    def analyze_text(self, text: str, message_date: date) -> List[AgriculturalOperation]:
         """
         Analyzes the input text using the Mistral client and returns a list of structured AgriculturalOperation objects.
         """
@@ -255,12 +255,12 @@ class AnalysisPipeline:
                                  op_data['date'] = date(year, month, day).isoformat()
                              else:
                                  logger.warning(f"Could not parse date format: {op_data['date']}")
-                                 op_data['date'] = None # Set to None if parsing fails
+                                 op_data['date'] = message_date # Set to None if parsing fails
                          except ValueError:
                              logger.warning(f"Invalid date components found: {op_data['date']}")
                              op_data['date'] = None
                     elif 'date' not in op_data or op_data.get('date') is None:
-                         op_data['date'] = None
+                         op_data['date'] = message_date
 
                     yield_division_factor = 100.0 
                     if 'daily_yield' in op_data and isinstance(op_data['daily_yield'], (int, float)) and op_data['daily_yield'] > 10000: # Heuristic check

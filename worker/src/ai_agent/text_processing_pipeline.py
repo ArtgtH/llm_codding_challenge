@@ -2,6 +2,7 @@ import io
 import logging
 import os
 from typing import List, Optional
+from datetime import date
 
 import pandas as pd
 from pydantic import ValidationError
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EXCEL_PATH = "operations_log.xlsx" # Default name in the current working directory
 
-def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Optional[bytes]:
+def process_text_message(text: str, message_date: date, excel_path: str = DEFAULT_EXCEL_PATH) -> Optional[bytes]:
     """
     Processes an input text message, analyzes it to extract agricultural operations,
     logs the results to an Excel file (creating or appending), and returns the 
@@ -36,7 +37,7 @@ def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Opt
         return None
 
     try:
-        operations: List[AgriculturalOperation] = pipeline.analyze_text(text)
+        operations: List[AgriculturalOperation] = pipeline.analyze_text(text, message_date=message_date)
         if not operations:
             logger.warning(f"Analysis of text did not yield any operations. Text: '{text[:100]}...'")
 
@@ -60,7 +61,6 @@ def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Opt
             logger.info(f"Excel log file found at {excel_path}. Reading existing data.")
             try:
                 existing_df = pd.read_excel(excel_path)
-                 # Basic check for compatibility (e.g., check if columns roughly match)
                 if not all(col in existing_df.columns for col in new_data_df.columns if not new_data_df.empty):
                      logger.warning(f"Columns in existing Excel file {excel_path} might not fully match new data. Appending anyway.")
             except Exception as e:
@@ -70,11 +70,9 @@ def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Opt
              logger.info(f"Excel log file not found at {excel_path}. Will create a new one.")
 
         if not new_data_df.empty:
-            # Append new data if any was parsed
             final_df = pd.concat([existing_df, new_data_df], ignore_index=True)
             logger.info(f"Appended {len(new_data_df)} new rows to the data.")
         else:
-            # If no new data, just use the existing data
             final_df = existing_df
             logger.info("No new operations were parsed, using existing Excel data (if any).")
 
