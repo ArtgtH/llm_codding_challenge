@@ -8,6 +8,7 @@ import pika
 from configs.config import settings
 from db.base import session_factory
 from db.repositories import DailyReportRepository
+from ai_agent.text_processing_pipeline import process_text_message, DEFAULT_EXCEL_PATH
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,13 +20,33 @@ logger = logging.getLogger(__name__)
 
 
 def some_magic(message: Dict[str, str | int]) -> bytes:
-    print(message["chat_id"])
-    print(message["chat_title"])
-    print(message["user"])
-    print(message["message"])
-    print(message["time"])
-
-    return b"Hello World"
+    """ 
+    Processes the message text using the AI agent, updates an Excel log, 
+    and returns the updated Excel file as bytes.
+    """ 
+    logger.info(f"Received message for processing: chat_id={message.get('chat_id')}, user={message.get('user')}")
+    input_text = message.get("message", "") # Safely get message text
+    
+    if not isinstance(input_text, str) or not input_text.strip():
+        logger.warning("Received message with empty or invalid text content.")
+        return b"" # Return empty bytes if no text
+        
+    # Define the path for the Excel log. 
+    # Consider making this configurable or based on chat_id/date if needed.
+    # Using the default path from the processing pipeline for now.
+    excel_log_path = DEFAULT_EXCEL_PATH 
+    
+    # Call the processing pipeline
+    excel_bytes = process_text_message(text=input_text, excel_path=excel_log_path)
+    
+    if excel_bytes:
+        logger.info(f"Successfully processed message and generated Excel ({len(excel_bytes)} bytes).")
+        return excel_bytes
+    else:
+        logger.error(f"Text processing failed or produced no data for message text: '{input_text[:100]}...'")
+        # Decide what to return on failure: empty bytes, or perhaps raise an exception?
+        # Returning empty bytes for now to avoid breaking the flow.
+        return b""
 
 
 def _callback(ch, method, properties, body):
