@@ -23,6 +23,7 @@ def some_magic(message: Dict[str, str | int]) -> bytes:
     print(message["chat_title"])
     print(message["user"])
     print(message["message"])
+    print(message["time"])
 
     return b"Hello World"
 
