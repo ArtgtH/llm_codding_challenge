@@ -199,7 +199,7 @@ class AnalysisPipeline:
             raise ValueError("MISTRAL_API_KEY environment variable not set.")
             
         # Simple rate limiter (e.g., 1 request per second) - adjust as needed
-        self.rate_limiter = RateLimiter(rate=1, per=1) 
+        self.rate_limiter = RateLimiter(rate=1)
         self.client = MistralAnalysisClient(api_key=MISTRAL_API_KEY, rate_limiter=self.rate_limiter)
         self.extra_data = load_extra_data(EXTRA_DATA_PATH)
         self.model_schema = AgriculturalOperation.get_schema_for_prompt()
