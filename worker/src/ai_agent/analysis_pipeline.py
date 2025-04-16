@@ -311,9 +311,7 @@ class AnalysisPipeline:
 
             return validated_operations
 
-        except MistralException as e:
-            logger.error(f"Mistral API error during analysis: {e}")
-            return []
+
         except Exception as e:
             logger.exception(f"Unexpected error during analysis pipeline: {e}") # Log full traceback
             return []
