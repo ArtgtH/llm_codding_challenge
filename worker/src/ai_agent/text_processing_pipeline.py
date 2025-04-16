@@ -30,38 +30,30 @@ def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Opt
     logger.info(f"Starting text processing for excel log: {excel_path}")
     
     try:
-        # Initialize the analysis pipeline (ensure MISTRAL_API_KEY is set in environment)
         pipeline = AnalysisPipeline()
     except ValueError as e:
         logger.error(f"Failed to initialize AnalysisPipeline: {e}")
         return None
 
-    # Analyze the text
     try:
         operations: List[AgriculturalOperation] = pipeline.analyze_text(text)
         if not operations:
             logger.warning(f"Analysis of text did not yield any operations. Text: '{text[:100]}...'")
-            # If no operations found, we might still want to return the existing excel file
-            # or create an empty one if it doesn't exist.
-            # For simplicity now, let's just handle appending if we get data.
+
     except Exception as e:
         logger.exception(f"Error during text analysis: {e}")
         return None # Cannot proceed if analysis fails
 
     new_data_df = pd.DataFrame()
     if operations:
-        # Convert Pydantic models to dictionaries for DataFrame creation
         operations_dict_list = [op.model_dump(mode='json') for op in operations]
         try:
             new_data_df = pd.DataFrame(operations_dict_list)
-            # Ensure columns match the model order (optional but good practice)
             cols = list(AgriculturalOperation.model_fields.keys())
             new_data_df = new_data_df[cols] # Reorder/select columns
         except Exception as e:
              logger.exception(f"Error creating DataFrame from analysis results: {e}")
-             # Proceed with empty new_data_df if conversion fails
 
-    # --- Excel File Handling ---
     existing_df = pd.DataFrame()
     try:
         if os.path.exists(excel_path):
@@ -90,7 +82,6 @@ def process_text_message(text: str, excel_path: str = DEFAULT_EXCEL_PATH) -> Opt
             logger.warning("No existing data and no new data parsed. No Excel file will be created/returned.")
             return None
 
-        # --- Write to In-Memory Excel --- 
         excel_buffer = io.BytesIO()
         final_df.to_excel(excel_buffer, index=False, engine='openpyxl')
         excel_buffer.seek(0) # Rewind buffer to the beginning

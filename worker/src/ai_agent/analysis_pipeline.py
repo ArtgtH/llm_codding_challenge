@@ -12,11 +12,8 @@ from .utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-# Configuration (consider moving to a config file/env vars)
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 EXTRA_DATA_PATH = os.path.join(os.path.dirname(__file__), "extra_data", "processed_data.json")
-
-# --- Helper Functions ---
 
 def load_extra_data(path: str) -> Optional[dict]:
     """Loads structured data from the JSON file."""
@@ -33,14 +30,12 @@ def load_extra_data(path: str) -> Optional[dict]:
 def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
     """Constructs the prompt for the Mistral API, including rules, lists, and few-shot examples."""
     
-    # --- Extract Reference Lists from Extra Data ---
     known_operations_list = []
     known_crops_list = []
     known_subdivisions_list = []
     
     if extra_data:
         try:
-            # Extract Operation Names (filtering header/notes)
             ops_data = extra_data.get("Названия операций", {}).get("data", [])
             if ops_data:
                  known_operations_list = [item.get("Названия операций") for item in ops_data 
@@ -49,7 +44,6 @@ def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
             logger.warning(f"Error processing known operations list: {e}")
 
         try:
-            # Extract Crop Names (filtering header/notes)
             crops_data = extra_data.get("Наименование культур", {}).get("data", [])
             if crops_data:
                  known_crops_list = [item.get("Наименование культур") for item in crops_data 
@@ -58,10 +52,8 @@ def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
             logger.warning(f"Error processing known crops list: {e}")
 
         try:
-            # Extract Subdivision Names (filtering header/notes)
             subs_data = extra_data.get("Принадлежность отделений и ПУ", {}).get("data", [])
             if subs_data:
-                 # Corrected list comprehension and set conversion for subdivisions
                  sub_names = []
                  for item in subs_data:
                      name = item.get("Принадлежность отделений и производственных участков (ПУ) к подразделениям")
@@ -71,7 +63,6 @@ def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
         except Exception as e:
             logger.warning(f"Error processing known subdivisions list: {e}")
 
-    # --- Few-Shot Examples (Keep as they are valuable) ---
     few_shot_examples = """
 Examples:
 
@@ -197,12 +188,10 @@ Expected JSON Output:
 **Extracted JSON List:**
 """
 
-    # Add the user text
     prompt += f"\nReport Text to Analyze:\n'''{text}'''\n\nExtracted JSON List:"""
     
     return prompt
 
-# --- Main Analysis Pipeline Class ---
 
 class AnalysisPipeline:
     def __init__(self):
@@ -220,29 +209,23 @@ class AnalysisPipeline:
         Analyzes the input text using the Mistral client and returns a list of structured AgriculturalOperation objects.
         """
         prompt = construct_prompt(text, self.model_schema, self.extra_data)
-        # logger.debug(f"Constructed Prompt:\n{prompt}") # Keep commented unless debugging prompt issues
 
         try:
             response_data = self.client.analyze(text=text, prompt=prompt) # Pass constructed prompt
             
             if not response_data or "error" in response_data:
                 logger.error(f"Analysis failed or returned error: {response_data}")
-                return [] 
-
-            # --- Response Parsing and Validation ---
-            # Expecting a JSON list directly based on the updated prompt instructions.
+                return []
             
             operations_data = []
             if isinstance(response_data, list):
                  operations_data = response_data
-            # Handle case where LLM might still wrap it, e.g. {"operations": [...]}
             elif isinstance(response_data, dict) and len(response_data) == 1:
                  key = list(response_data.keys())[0]
                  if isinstance(response_data[key], list):
                      logger.warning(f"LLM returned a dict with key '{key}' containing the list, instead of a direct list.")
                      operations_data = response_data[key]
                  else:
-                     # Could potentially be a single object not in a list - try processing it
                       logger.warning(f"LLM returned a dict but expected a list. Attempting to process as single object.")
                       operations_data = [response_data] 
             else:
@@ -251,26 +234,23 @@ class AnalysisPipeline:
 
 
             validated_operations = []
-            current_year = date.today().year # Get current year once
+            current_year = date.today().year
             for op_data in operations_data:
                 if not isinstance(op_data, dict):
                     logger.warning(f"Skipping item in response list as it's not a dictionary: {op_data}")
                     continue
                     
                 try:
-                    # --- Date Handling ---
                     if 'date' in op_data and isinstance(op_data['date'], str):
                          op_date_str = op_data['date'].strip().replace('г.', '') # Clean up date string
                          parts = op_date_str.split('.')
                          try:
                              if len(parts) == 2:
                                  day, month = map(int, parts)
-                                 # Assume current year if only day and month provided
                                  op_data['date'] = date(current_year, month, day).isoformat()
                              elif len(parts) == 3:
                                  day, month, year = map(int, parts)
-                                 # Handle 2-digit year (e.g., 25 -> 2025)
-                                 if year < 100: 
+                                 if year < 100:
                                      year += 2000 
                                  op_data['date'] = date(year, month, day).isoformat()
                              else:
@@ -280,20 +260,14 @@ class AnalysisPipeline:
                              logger.warning(f"Invalid date components found: {op_data['date']}")
                              op_data['date'] = None
                     elif 'date' not in op_data or op_data.get('date') is None:
-                         # Explicitly set to None if missing or already None
-                         op_data['date'] = None 
+                         op_data['date'] = None
 
-                    # --- Yield Handling (Potential Division) ---
-                    # Example: If 'Вал' comes as '1259680' and means 12596.80 centners
-                    # Adjust this factor based on actual data meaning. Factor 100 assumes input is 100*centners (e.g., kg?)
                     yield_division_factor = 100.0 
                     if 'daily_yield' in op_data and isinstance(op_data['daily_yield'], (int, float)) and op_data['daily_yield'] > 10000: # Heuristic check
                          op_data['daily_yield'] /= yield_division_factor
                     if 'total_yield' in op_data and isinstance(op_data['total_yield'], (int, float)) and op_data['total_yield'] > 10000: # Heuristic check
                          op_data['total_yield'] /= yield_division_factor
 
-                    # --- Area Handling (Ensure Float) ---
-                    # Pydantic should handle string->float conversion if possible, but explicit is safer
                     if 'daily_area' in op_data and isinstance(op_data['daily_area'], str):
                         try: op_data['daily_area'] = float(op_data['daily_area'].replace(',', '.')) 
                         except ValueError: op_data['daily_area'] = None
@@ -315,34 +289,3 @@ class AnalysisPipeline:
         except Exception as e:
             logger.exception(f"Unexpected error during analysis pipeline: {e}") # Log full traceback
             return []
-
-# --- Example Usage (for testing) ---
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    
-    # Ensure MISTRAL_API_KEY is set as an environment variable for this test
-    if not os.getenv("MISTRAL_API_KEY"):
-        print("Error: MISTRAL_API_KEY environment variable is not set.")
-        # Set a dummy key for basic structure check if needed, but API call will fail
-        # os.environ["MISTRAL_API_KEY"] = "YOUR_DUMMY_KEY_HERE" 
-        # exit(1) # Exit if key is absolutely required for testing flow
-
-    pipeline = AnalysisPipeline()
-
-    # Example texts from the HTML file
-    test_texts = [
-        "Пахота зяби под сою", # Example 1 (Implies multiple operations)
-        "Уборка свеклы 27.10.день", # Example 2 (Single operation with date and yield)
-        "20.11 Мир", # Example 3 (Implies multiple operations with different dates)
-        "Внесение удобрений под рапс отд 7 -136/270", # Example 5 from image (Needs interpretation)
-        "Север" # Example 4 from image (Seems incomplete?)
-    ]
-
-    for text in test_texts:
-        print(f"\n--- Analyzing Text: '{text}' ---")
-        results = pipeline.analyze_text(text)
-        if results:
-            for result in results:
-                print(result.model_dump_json(indent=2))
-        else:
-            print("Analysis returned no results or failed.")
