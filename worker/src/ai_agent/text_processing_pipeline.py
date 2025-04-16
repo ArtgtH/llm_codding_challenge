@@ -23,6 +23,7 @@ def process_text_message(text: str, message_date: date, excel_path: str = DEFAUL
     Args:
         text: The raw text message to analyze.
         excel_path: The path to the Excel file for logging results.
+        message_date
 
     Returns:
         Bytes of the updated Excel file, or None if analysis fails or produces no data 

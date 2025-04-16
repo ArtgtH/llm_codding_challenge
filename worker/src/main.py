@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict
 
 import pika
@@ -26,26 +26,23 @@ def some_magic(message: Dict[str, str | int]) -> bytes:
     """ 
     logger.info(f"Received message for processing: chat_id={message.get('chat_id')}, user={message.get('user')}")
     input_text = message.get("message", "") # Safely get message text
+    input_date = message.get("time", None) # Safely get message textct
+    input_date  = datetime.strptime(input_date, "%d/%m/%Y, %H:%M:%S")
+    input_date = input_date.date()
     
     if not isinstance(input_text, str) or not input_text.strip():
         logger.warning("Received message with empty or invalid text content.")
-        return b"" # Return empty bytes if no text
+        return b""
         
-    # Define the path for the Excel log. 
-    # Consider making this configurable or based on chat_id/date if needed.
-    # Using the default path from the processing pipeline for now.
-    excel_log_path = DEFAULT_EXCEL_PATH 
-    
-    # Call the processing pipeline
-    excel_bytes = process_text_message(text=input_text, excel_path=excel_log_path)
+
+    excel_log_path = DEFAULT_EXCEL_PATH
+    excel_bytes = process_text_message(text=input_text,  message_date=input_date,  excel_path=excel_log_path,)
     
     if excel_bytes:
         logger.info(f"Successfully processed message and generated Excel ({len(excel_bytes)} bytes).")
         return excel_bytes
     else:
         logger.error(f"Text processing failed or produced no data for message text: '{input_text[:100]}...'")
-        # Decide what to return on failure: empty bytes, or perhaps raise an exception?
-        # Returning empty bytes for now to avoid breaking the flow.
         return b""
 
 
