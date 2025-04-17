@@ -20,8 +20,10 @@ services:
 
   worker:
     build: ./worker
-    <<: *env
-    <<: *cond
+    environment:
+      <<: *env
+    depends_on:
+      <<: *cond
     networks:
       - dev
     restart: unless-stopped

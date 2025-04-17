@@ -1,5 +1,5 @@
 up:
-	docker compose up --build -d
+	docker compose up --build
 
 up-app:
 	docker compose up --build tg_bot worker
