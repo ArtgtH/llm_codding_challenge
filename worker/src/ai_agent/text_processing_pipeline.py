@@ -81,6 +81,8 @@ def process_text_message(text: str, message_date: date, excel_path: str = DEFAUL
             logger.warning("No existing data and no new data parsed. No Excel file will be created/returned.")
             return None
 
+        final_df.to_excel(excel_path, index=False, engine='openpyxl')
+
         excel_buffer = io.BytesIO()
         final_df.to_excel(excel_buffer, index=False, engine='openpyxl')
         excel_buffer.seek(0) # Rewind buffer to the beginning

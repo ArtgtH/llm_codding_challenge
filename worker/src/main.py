@@ -19,14 +19,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def some_magic(message: Dict[str, str | int]) -> bytes:
+def some_magic(message: Dict[str, str | int]) -> bytes | None:
     """ 
     Processes the message text using the AI agent, updates an Excel log, 
     and returns the updated Excel file as bytes.
     """ 
     logger.info(f"Received message for processing: chat_id={message.get('chat_id')}, user={message.get('user')}")
-    input_text = message.get("message", "") # Safely get message text
-    input_date = message.get("time", None) # Safely get message textct
+    input_text = message.get("message", "")
+    input_date = message.get("time", None)
     input_date  = datetime.strptime(input_date, "%d/%m/%Y, %H:%M:%S")
     input_date = input_date.date()
     
@@ -43,7 +43,7 @@ def some_magic(message: Dict[str, str | int]) -> bytes:
         return excel_bytes
     else:
         logger.error(f"Text processing failed or produced no data for message text: '{input_text[:100]}...'")
-        return b""
+        return None
 
 
 def _callback(ch, method, properties, body):
