@@ -1,7 +1,7 @@
 import json
 import logging
 from mistralai import Mistral
-from utils.rate_limiter import RateLimiter
+from ai_agent.utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 

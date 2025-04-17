@@ -1,7 +1,7 @@
 from datetime import datetime, date
 
 import pytz
-from sqlalchemy import String, LargeBinary, UniqueConstraint, Date
+from sqlalchemy import String, LargeBinary, UniqueConstraint, Date, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
@@ -17,7 +17,8 @@ class ChatMessage(Base):
     user_name: Mapped[str] = mapped_column(String(255))
     message_text: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
-        Date, default=lambda: datetime.now(pytz.timezone("Europe/Moscow"))
+        DateTime(timezone=True),
+        default=lambda: datetime.now(pytz.timezone("Europe/Moscow"))
     )
 
 

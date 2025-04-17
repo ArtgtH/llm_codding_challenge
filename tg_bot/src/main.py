@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, Any, Dict, Awaitable
 
 import pytz
@@ -76,7 +76,7 @@ class ChatTimers:
 	async def _timer_task(self, chat_id: int, repo: DailyReportRepository):
 		try:
 			logger.info("Started timer")
-			await asyncio.sleep(10)
+			await asyncio.sleep(120)
 			logger.info("Finished timer")
 
 			report = await repo.get_daily_report(str(chat_id), datetime.today().date())
@@ -132,12 +132,14 @@ async def handle_message(
 			message.text or "",
 		)
 
+		message_date = message.date + timedelta(hours=3)
+
 		await publisher.send_message(
 			str(message.chat.id),
 			message.chat.title,
 			message.from_user.full_name,
 			message.text,
-			message.date,
+			message_date.strftime("%d/%m/%Y, %H:%M:%S"),
 		)
 
 		await chat_timers.reset_timer(message.chat.id, report_repo)

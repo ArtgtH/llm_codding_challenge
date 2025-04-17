@@ -7,6 +7,7 @@ from datetime import date
 import pandas as pd
 from pydantic import ValidationError
 
+from configs.config import settings
 from .analysis_pipeline import AnalysisPipeline
 from .models.data_model import AgriculturalOperation
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Ensure MISTRAL_API_KEY is set as an environment variable
-    if not os.getenv("MISTRAL_API_KEY"):
+    if not settings.MISTRAL_API_KEY:
         print("Error: MISTRAL_API_KEY environment variable is not set for testing.")
         exit(1)
 

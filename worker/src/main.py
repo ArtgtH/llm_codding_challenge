@@ -33,7 +33,6 @@ def some_magic(message: Dict[str, str | int]) -> bytes | None:
     if not isinstance(input_text, str) or not input_text.strip():
         logger.warning("Received message with empty or invalid text content.")
         return b""
-        
 
     excel_log_path = DEFAULT_EXCEL_PATH
     excel_bytes = process_text_message(text=input_text,  message_date=input_date,  excel_path=excel_log_path,)

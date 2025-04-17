@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_NAME: str
 
+    MISTRAL_API_KEY: str
+
     RABBITMQ_URL: str
     RABBITMQ_MESSAGE_QUEUE: str
 

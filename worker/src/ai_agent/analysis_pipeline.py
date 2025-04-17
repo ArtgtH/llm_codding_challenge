@@ -6,13 +6,14 @@ from datetime import date
 
 from pydantic import ValidationError
 
+from configs.config import settings
 from .mistral_client import MistralAnalysisClient
 from .models.data_model import AgriculturalOperation
 from .utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+MISTRAL_API_KEY = settings.MISTRAL_API_KEY
 EXTRA_DATA_PATH = os.path.join(os.path.dirname(__file__), "extra_data", "processed_data.json")
 
 def load_extra_data(path: str) -> Optional[dict]:

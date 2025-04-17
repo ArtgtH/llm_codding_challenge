@@ -25,7 +25,7 @@ class RabbitMQService:
 			if self.connection and not self.connection.is_closed:
 				await self.connection.close()
 
-	async def send_message(self, chat_id: str, chat_title: str, user: str, text: str, time: datetime):
+	async def send_message(self, chat_id: str, chat_title: str, user: str, text: str, time: str):
 		message = {
 			"chat_id": chat_id,
 			"chat_title": chat_title,
