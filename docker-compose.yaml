@@ -1,10 +1,15 @@
 services:
   tg_bot:
     build: ./tg_bot
-    environment:
+    environment: &env
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_NAME: "AGRONOM"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
       RABBITMQ_MESSAGE_QUEUE: "message_q"
-    depends_on:
+    depends_on: &cond
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -15,22 +20,14 @@ services:
 
   worker:
     build: ./worker
-    environment:
-      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
-      RABBITMQ_MESSAGE_QUEUE: "message_q"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
+    <<: *env
+    <<: *cond
     networks:
       - dev
     restart: unless-stopped
 
   postgres:
     image: postgres:16
-    ports:
-      - "5433:5432"
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"

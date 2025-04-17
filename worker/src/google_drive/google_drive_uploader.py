@@ -11,7 +11,9 @@ class GoogleDriveUploader:
     ):
         self.credentials_path = credentials_path
         self.service = self._authenticate()
-        self.url = "https://drive.google.com/drive/folders/1_9w8N3t1--tbkYRLm5_ZBcJ95hf6zw-h?usp=sharing"
+        self.url = (
+            "https://drive.google.com/drive/folders/1lcZw4lMlMww5zzeZBLCd6-cI71lKvqNg"
+        )
         self.subfolder_url = self.create_subfolder(self.url, "SlovarikDB")
 
     def _authenticate(self):

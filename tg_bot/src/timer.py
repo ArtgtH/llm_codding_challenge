@@ -34,7 +34,7 @@ class ChatTimers:
         current_task = asyncio.current_task()
         try:
             logger.info("Started timer")
-            await asyncio.sleep(10)
+            await asyncio.sleep(120)
             logger.info("Finished timer")
 
             async with async_session_factory() as db:
