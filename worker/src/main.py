@@ -52,14 +52,13 @@ def _callback(ch, method, properties, body):
 
     logger.info(message)
 
-    report = some_magic(message)
-
-    with session_factory() as db:
-        DailyReportRepository(db).create_daily_report(
-            chat_id=message.get("chat_id"),
-            date=datetime.today().date(),
-            report=report,
-        )
+    if report := some_magic(message):
+        with session_factory() as db:
+            DailyReportRepository(db).create_daily_report(
+                chat_id=message.get("chat_id"),
+                date=datetime.today().date(),
+                report=report,
+            )
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
