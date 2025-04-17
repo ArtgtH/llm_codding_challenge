@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def some_magic(message: Dict[str, str | int]) -> bytes:
+def some_magic(message: Dict[str, str | int]) -> bytes | None:
     """ 
     Processes the message text using the AI agent, updates an Excel log, 
     and returns the updated Excel file as bytes.
@@ -52,14 +52,13 @@ def _callback(ch, method, properties, body):
 
     logger.info(message)
 
-    report = some_magic(message)
-
-    with session_factory() as db:
-        DailyReportRepository(db).create_daily_report(
-            chat_id=message.get("chat_id"),
-            date=datetime.today().date(),
-            report=report,
-        )
+    if report := some_magic(message):
+        with session_factory() as db:
+            DailyReportRepository(db).create_daily_report(
+                chat_id=message.get("chat_id"),
+                date=datetime.today().date(),
+                report=report,
+            )
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
