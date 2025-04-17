@@ -1,5 +1,6 @@
 import time
 
+
 class RateLimiter:
     def __init__(self, rate: float):
         self.rate = rate

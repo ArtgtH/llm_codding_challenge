@@ -1,43 +1,48 @@
 import json
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from typing import AsyncGenerator
 
-import aio_pika
+from aio_pika import connect_robust, Message
+from aio_pika.abc import AbstractRobustConnection
+from aio_pika.pool import Pool
 
 logger = logging.getLogger(__name__)
 
 
 class RabbitMQService:
-	def __init__(self, rabbit_url: str, queue: str):
-		self.rabbit_url = rabbit_url
-		self.queue = queue
-		self.connection = None
-		self.channel = None
+    def __init__(self, rabbit_url: str, queue: str):
+        self.rabbit_url = rabbit_url
+        self.queue = queue
+        self.connection_pool = Pool(self._create_connection, max_size=100)
 
-	@asynccontextmanager
-	async def connect(self):
-		try:
-			self.connection = await aio_pika.connect_robust(self.rabbit_url)
-			self.channel = await self.connection.channel()
-			yield self
-		finally:
-			if self.connection and not self.connection.is_closed:
-				await self.connection.close()
+    async def _create_connection(self) -> AbstractRobustConnection:
+        connection = await connect_robust(self.rabbit_url)
+        async with connection.channel() as channel:
+            await channel.declare_queue(self.queue, durable=True)
+        return connection
 
-	async def send_message(self, chat_id: str, chat_title: str, user: str, text: str, time: str):
-		message = {
-			"chat_id": chat_id,
-			"chat_title": chat_title,
-			"user": user,
-			"message": text,
-			"time": time,
-		}
-		json_message = json.dumps(message)
+    @asynccontextmanager
+    async def connect(self) -> AsyncGenerator[None, None]:
+        async with self.connection_pool.acquire() as connection:
+            async with connection.channel() as channel:
+                yield channel
 
-		await self.channel.declare_queue(self.queue, durable=True)
-		await self.channel.default_exchange.publish(
-			routing_key=self.queue,
-			message=aio_pika.Message(body=json_message.encode()),
-		)
-		logger.info(f"Send msg [{text}] in {self.queue}")
+    async def send_message(
+        self, chat_id: str, chat_title: str, user: str, text: str, time: str
+    ):
+        message = {
+            "chat_id": chat_id,
+            "chat_title": chat_title,
+            "user": user,
+            "message_text": text,
+            "time": time,
+        }
+        json_message = json.dumps(message)
+
+        async with self.connect() as channel:
+            await channel.default_exchange.publish(
+                Message(body=json_message.encode()),
+                routing_key=self.queue,
+            )
+            logger.info(f"Send msg `{text[:20]}`")

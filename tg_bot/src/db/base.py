@@ -4,9 +4,9 @@ from sqlalchemy.orm import declarative_base
 from configs.config import settings
 
 engine = create_async_engine(
-    url=settings.DATABASE_URL_asyncpg,
-    echo=False,
+    url=settings.DATABASE_URL_asyncpg, echo=False, pool_size=50, max_overflow=10
 )
+
 
 async_session_factory = async_sessionmaker(engine)
 

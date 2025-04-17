@@ -14,12 +14,15 @@ from .utils.rate_limiter import RateLimiter
 logger = logging.getLogger(__name__)
 
 MISTRAL_API_KEY = settings.MISTRAL_API_KEY
-EXTRA_DATA_PATH = os.path.join(os.path.dirname(__file__), "extra_data", "processed_data.json")
+EXTRA_DATA_PATH = os.path.join(
+    os.path.dirname(__file__), "extra_data", "processed_data.json"
+)
+
 
 def load_extra_data(path: str) -> Optional[dict]:
     """Loads structured data from the JSON file."""
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         logger.warning(f"Extra data file not found at {path}")
@@ -28,39 +31,54 @@ def load_extra_data(path: str) -> Optional[dict]:
         logger.error(f"Error decoding JSON from {path}")
         return None
 
+
 def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
     """Constructs the prompt for the Mistral API, including rules, lists, and few-shot examples."""
-    
+
     known_operations_list = []
     known_crops_list = []
     known_subdivisions_list = []
-    
+
     if extra_data:
         try:
             ops_data = extra_data.get("Названия операций", {}).get("data", [])
             if ops_data:
-                 known_operations_list = [item.get("Названия операций") for item in ops_data 
-                                          if item.get("Названия операций") and item.get("Названия операций") != "Наименования полевых работ"]
+                known_operations_list = [
+                    item.get("Названия операций")
+                    for item in ops_data
+                    if item.get("Названия операций")
+                    and item.get("Названия операций") != "Наименования полевых работ"
+                ]
         except Exception as e:
             logger.warning(f"Error processing known operations list: {e}")
 
         try:
             crops_data = extra_data.get("Наименование культур", {}).get("data", [])
             if crops_data:
-                 known_crops_list = [item.get("Наименование культур") for item in crops_data 
-                                     if item.get("Наименование культур") and item.get("Наименование культур") != "Наименования с/х культур"]
+                known_crops_list = [
+                    item.get("Наименование культур")
+                    for item in crops_data
+                    if item.get("Наименование культур")
+                    and item.get("Наименование культур") != "Наименования с/х культур"
+                ]
         except Exception as e:
             logger.warning(f"Error processing known crops list: {e}")
 
         try:
-            subs_data = extra_data.get("Принадлежность отделений и ПУ", {}).get("data", [])
+            subs_data = extra_data.get("Принадлежность отделений и ПУ", {}).get(
+                "data", []
+            )
             if subs_data:
-                 sub_names = []
-                 for item in subs_data:
-                     name = item.get("Принадлежность отделений и производственных участков (ПУ) к подразделениям")
-                     if name and name != "Подразделение":
-                         sub_names.append(name)
-                 known_subdivisions_list = list(set(sub_names)) # Convert to set then back to list to get unique names
+                sub_names = []
+                for item in subs_data:
+                    name = item.get(
+                        "Принадлежность отделений и производственных участков (ПУ) к подразделениям"
+                    )
+                    if name and name != "Подразделение":
+                        sub_names.append(name)
+                known_subdivisions_list = list(
+                    set(sub_names)
+                )  # Convert to set then back to list to get unique names
         except Exception as e:
             logger.warning(f"Error processing known subdivisions list: {e}")
 
@@ -189,8 +207,8 @@ Expected JSON Output:
 **Extracted JSON List:**
 """
 
-    prompt += f"\nReport Text to Analyze:\n'''{text}'''\n\nExtracted JSON List:"""
-    
+    prompt += f"\nReport Text to Analyze:\n'''{text}'''\n\nExtracted JSON List:" ""
+
     return prompt
 
 
@@ -198,95 +216,146 @@ class AnalysisPipeline:
     def __init__(self):
         if not MISTRAL_API_KEY:
             raise ValueError("MISTRAL_API_KEY environment variable not set.")
-            
+
         # Simple rate limiter (e.g., 1 request per second) - adjust as needed
         self.rate_limiter = RateLimiter(rate=1)
-        self.client = MistralAnalysisClient(api_key=MISTRAL_API_KEY, rate_limiter=self.rate_limiter)
+        self.client = MistralAnalysisClient(
+            api_key=MISTRAL_API_KEY, rate_limiter=self.rate_limiter
+        )
         self.extra_data = load_extra_data(EXTRA_DATA_PATH)
         self.model_schema = AgriculturalOperation.get_schema_for_prompt()
 
-    def analyze_text(self, text: str, message_date: date) -> List[AgriculturalOperation]:
+    def analyze_text(
+        self, text: str, message_date: date
+    ) -> List[AgriculturalOperation]:
         """
         Analyzes the input text using the Mistral client and returns a list of structured AgriculturalOperation objects.
         """
         prompt = construct_prompt(text, self.model_schema, self.extra_data)
 
         try:
-            response_data = self.client.analyze(text=text, prompt=prompt) # Pass constructed prompt
-            
+            response_data = self.client.analyze(
+                text=text, prompt=prompt
+            )  # Pass constructed prompt
+
             if not response_data or "error" in response_data:
                 logger.error(f"Analysis failed or returned error: {response_data}")
                 return []
-            
+
             operations_data = []
             if isinstance(response_data, list):
-                 operations_data = response_data
+                operations_data = response_data
             elif isinstance(response_data, dict) and len(response_data) == 1:
-                 key = list(response_data.keys())[0]
-                 if isinstance(response_data[key], list):
-                     logger.warning(f"LLM returned a dict with key '{key}' containing the list, instead of a direct list.")
-                     operations_data = response_data[key]
-                 else:
-                      logger.warning(f"LLM returned a dict but expected a list. Attempting to process as single object.")
-                      operations_data = [response_data] 
+                key = list(response_data.keys())[0]
+                if isinstance(response_data[key], list):
+                    logger.warning(
+                        f"LLM returned a dict with key '{key}' containing the list, instead of a direct list."
+                    )
+                    operations_data = response_data[key]
+                else:
+                    logger.warning(
+                        "LLM returned a dict but expected a list. Attempting to process as single object."
+                    )
+                    operations_data = [response_data]
             else:
-                 logger.error(f"Unexpected response format from LLM. Expected list, got {type(response_data)}: {response_data}")
-                 return []
-
+                logger.error(
+                    f"Unexpected response format from LLM. Expected list, got {type(response_data)}: {response_data}"
+                )
+                return []
 
             validated_operations = []
             current_year = date.today().year
             for op_data in operations_data:
                 if not isinstance(op_data, dict):
-                    logger.warning(f"Skipping item in response list as it's not a dictionary: {op_data}")
+                    logger.warning(
+                        f"Skipping item in response list as it's not a dictionary: {op_data}"
+                    )
                     continue
-                    
+
                 try:
-                    if 'date' in op_data and isinstance(op_data['date'], str):
-                         op_date_str = op_data['date'].strip().replace('г.', '') # Clean up date string
-                         parts = op_date_str.split('.')
-                         try:
-                             if len(parts) == 2:
-                                 day, month = map(int, parts)
-                                 op_data['date'] = date(current_year, month, day).isoformat()
-                             elif len(parts) == 3:
-                                 day, month, year = map(int, parts)
-                                 if year < 100:
-                                     year += 2000 
-                                 op_data['date'] = date(year, month, day).isoformat()
-                             else:
-                                 logger.warning(f"Could not parse date format: {op_data['date']}")
-                                 op_data['date'] = message_date # Set to None if parsing fails
-                         except ValueError:
-                             logger.warning(f"Invalid date components found: {op_data['date']}")
-                             op_data['date'] = None
-                    elif 'date' not in op_data or op_data.get('date') is None:
-                         op_data['date'] = message_date
+                    if "date" in op_data and isinstance(op_data["date"], str):
+                        op_date_str = (
+                            op_data["date"].strip().replace("г.", "")
+                        )  # Clean up date string
+                        parts = op_date_str.split(".")
+                        try:
+                            if len(parts) == 2:
+                                day, month = map(int, parts)
+                                op_data["date"] = date(
+                                    current_year, month, day
+                                ).isoformat()
+                            elif len(parts) == 3:
+                                day, month, year = map(int, parts)
+                                if year < 100:
+                                    year += 2000
+                                op_data["date"] = date(year, month, day).isoformat()
+                            else:
+                                logger.warning(
+                                    f"Could not parse date format: {op_data['date']}"
+                                )
+                                op_data["date"] = (
+                                    message_date  # Set to None if parsing fails
+                                )
+                        except ValueError:
+                            logger.warning(
+                                f"Invalid date components found: {op_data['date']}"
+                            )
+                            op_data["date"] = None
+                    elif "date" not in op_data or op_data.get("date") is None:
+                        op_data["date"] = message_date
 
-                    yield_division_factor = 100.0 
-                    if 'daily_yield' in op_data and isinstance(op_data['daily_yield'], (int, float)) and op_data['daily_yield'] > 10000: # Heuristic check
-                         op_data['daily_yield'] /= yield_division_factor
-                    if 'total_yield' in op_data and isinstance(op_data['total_yield'], (int, float)) and op_data['total_yield'] > 10000: # Heuristic check
-                         op_data['total_yield'] /= yield_division_factor
+                    yield_division_factor = 100.0
+                    if (
+                        "daily_yield" in op_data
+                        and isinstance(op_data["daily_yield"], (int, float))
+                        and op_data["daily_yield"] > 10000
+                    ):  # Heuristic check
+                        op_data["daily_yield"] /= yield_division_factor
+                    if (
+                        "total_yield" in op_data
+                        and isinstance(op_data["total_yield"], (int, float))
+                        and op_data["total_yield"] > 10000
+                    ):  # Heuristic check
+                        op_data["total_yield"] /= yield_division_factor
 
-                    if 'daily_area' in op_data and isinstance(op_data['daily_area'], str):
-                        try: op_data['daily_area'] = float(op_data['daily_area'].replace(',', '.')) 
-                        except ValueError: op_data['daily_area'] = None
-                    if 'total_area' in op_data and isinstance(op_data['total_area'], str):
-                         try: op_data['total_area'] = float(op_data['total_area'].replace(',', '.'))
-                         except ValueError: op_data['total_area'] = None
-
+                    if "daily_area" in op_data and isinstance(
+                        op_data["daily_area"], str
+                    ):
+                        try:
+                            op_data["daily_area"] = float(
+                                op_data["daily_area"].replace(",", ".")
+                            )
+                        except ValueError:
+                            op_data["daily_area"] = None
+                    if "total_area" in op_data and isinstance(
+                        op_data["total_area"], str
+                    ):
+                        try:
+                            op_data["total_area"] = float(
+                                op_data["total_area"].replace(",", ".")
+                            )
+                        except ValueError:
+                            op_data["total_area"] = None
 
                     operation = AgriculturalOperation.model_validate(op_data)
                     validated_operations.append(operation)
                 except ValidationError as e:
-                    logger.error(f"Pydantic Validation Error for operation data {op_data}: {e}")
-                except (ValueError, TypeError, KeyError) as e: # Catch potential type/key errors during processing
-                     logger.error(f"Data type, format, or key error during processing {op_data}: {e}")
+                    logger.error(
+                        f"Pydantic Validation Error for operation data {op_data}: {e}"
+                    )
+                except (
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                ) as e:  # Catch potential type/key errors during processing
+                    logger.error(
+                        f"Data type, format, or key error during processing {op_data}: {e}"
+                    )
 
             return validated_operations
 
-
         except Exception as e:
-            logger.exception(f"Unexpected error during analysis pipeline: {e}") # Log full traceback
+            logger.exception(
+                f"Unexpected error during analysis pipeline: {e}"
+            )  # Log full traceback
             return []

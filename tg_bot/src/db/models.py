@@ -18,7 +18,7 @@ class ChatMessage(Base):
     message_text: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(pytz.timezone("Europe/Moscow"))
+        default=lambda: datetime.now(pytz.timezone("Europe/Moscow")),
     )
 
 

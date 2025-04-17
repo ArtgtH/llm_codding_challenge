@@ -32,7 +32,7 @@ class MistralAnalysisClient:
             response = self.client.chat.complete(
                 model=self.model,
                 messages=messages,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
 
             try:

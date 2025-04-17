@@ -42,6 +42,5 @@ class MessageRepository:
             user_name=user_name,
             message_text=message_text,
         )
-        logger.info(f"Create msg {message}")
         self.db.add(message)
         await self.db.commit()

@@ -11,6 +11,7 @@ services:
         condition: service_healthy
     networks:
       - dev
+    restart: unless-stopped
 
   worker:
     build: ./worker
@@ -24,6 +25,7 @@ services:
         condition: service_healthy
     networks:
       - dev
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
