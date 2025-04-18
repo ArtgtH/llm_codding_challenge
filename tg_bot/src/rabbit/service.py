@@ -45,4 +45,3 @@ class RabbitMQService:
                 Message(body=json_message.encode()),
                 routing_key=self.queue,
             )
-            logger.info(f"Send msg `{text[:20]}`")

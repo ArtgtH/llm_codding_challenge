@@ -18,7 +18,7 @@ class Mode(Enum):
 
 class GoogleDriveUploader:
     def __init__(
-        self, credentials_path="google_drive/api_key/agrohack-92ac54ea0f5e.json"
+        self, credentials_path="google_drive/api_key/iconic-iridium-457212-v7-98c02dc71ba7.json"
     ):
         self.credentials_path = credentials_path
         self.service = self._authenticate()
