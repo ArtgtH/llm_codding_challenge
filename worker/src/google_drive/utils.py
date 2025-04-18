@@ -1,3 +1,4 @@
+import pytz
 from docx import Document
 from io import BytesIO
 from datetime import datetime
@@ -16,7 +17,7 @@ def text_to_word_bytes(text: str) -> bytes:
 
 
 def get_table_name(team_name: str = "AgroTeam") -> str:
-    current_time = datetime.now()
+    current_time = datetime.now(pytz.timezone("Europe/Moscow"))
     time_format = current_time.strftime("%H_%d_%m_%Y")
     return f"{time_format}_{team_name}.xlsx"
 

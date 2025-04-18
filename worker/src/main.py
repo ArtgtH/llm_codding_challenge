@@ -10,7 +10,7 @@ from configs.config import settings
 from db.base import session_factory
 from db.repositories import DailyReportRepository
 from ai_agent.text_processing_pipeline import process_text_message, DEFAULT_EXCEL_PATH
-from google_drive.google_drive_uploader import GoogleDriveUploader
+from google_drive.google_drive_uploader import GoogleDriveUploader, Mode
 from google_drive.utils import text_to_word_bytes, get_document_name, get_table_name
 
 logging.basicConfig(
@@ -32,13 +32,13 @@ class MessageDTO:
 
 
 message_counters = {}
+drive_uploader = GoogleDriveUploader()
 
 
 def save_message_as_word(
     text: str,
     sender_name: str,
     message_time: datetime,
-    drive_uploader: GoogleDriveUploader,
     team_name: str,
 ) -> bool:
     try:
@@ -56,17 +56,12 @@ def save_message_as_word(
 
         team_folder_url = drive_uploader.url
 
-        try:
-            team_subfolder_url = drive_uploader.create_subfolder(
-                team_folder_url, team_name
-            )
-            logger.info(f"Created new team folder: {team_name}")
-        except Exception as e:
-            logger.warning(f"Team folder may already exist or couldn't be created: {e}")
-            team_subfolder_url = drive_uploader.subfolder_url
+        team_subfolder_url = drive_uploader.get_or_create_subfolder(
+            team_folder_url, team_name
+        )
 
-        drive_uploader.upload_file(
-            team_subfolder_url or team_folder_url, filename, word_bytes
+        drive_uploader.upload_or_rewrite_file(
+            team_subfolder_url or team_folder_url, filename, word_bytes, mode=Mode.W
         )
         logger.info(f"Saved message as Word document: {filename}")
 
@@ -76,17 +71,15 @@ def save_message_as_word(
         return False
 
 
-def save_excel_report(
-    excel_bytes: bytes, drive_uploader: GoogleDriveUploader, team_name: str
-) -> bool:
+def save_excel_report(excel_bytes: bytes, team_name: str) -> bool:
     try:
         filename = get_table_name(team_name=team_name)
 
-        team_folder_url = drive_uploader.url
-        team_subfolder_url = drive_uploader.subfolder_url
+        upload_url = drive_uploader.url
 
-        upload_url = team_subfolder_url or team_folder_url
-        drive_uploader.upload_file(upload_url, filename, excel_bytes)
+        drive_uploader.upload_or_rewrite_file(
+            upload_url, filename, excel_bytes, mode=Mode.RW
+        )
         logger.info(f"Saved Excel report: {filename}")
 
         return True
@@ -111,18 +104,14 @@ def process_message(message: MessageDTO) -> bytes | None:
         logger.warning("Received message with empty or invalid text content.")
         return b""
 
-    drive_uploader = None
     try:
-        drive_uploader = GoogleDriveUploader()
-
-        team_name = os.environ.get("TEAM_NAME", "AgroTeam")
+        team_name = "SlovarikDB"
         sender_name = message.user or "UnknownUser"
 
         save_message_as_word(
             text=input_text,
             sender_name=sender_name,
             message_time=input_date,
-            drive_uploader=drive_uploader,
             team_name=team_name,
         )
     except Exception as e:
@@ -145,7 +134,6 @@ def process_message(message: MessageDTO) -> bytes | None:
                 team_name = os.environ.get("TEAM_NAME", "AgroTeam")
                 save_excel_report(
                     excel_bytes=excel_bytes,
-                    drive_uploader=drive_uploader,
                     team_name=team_name,
                 )
             except Exception as e:

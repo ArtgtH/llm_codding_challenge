@@ -1,8 +1,19 @@
+import logging
 import re
+from enum import Enum
+
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from googleapiclient.http import MediaIoBaseUpload
 from io import BytesIO
+
+
+logger = logging.getLogger(__name__)
+
+
+class Mode(Enum):
+    W = "write"
+    RW = "rewrite"
 
 
 class GoogleDriveUploader:
@@ -14,7 +25,6 @@ class GoogleDriveUploader:
         self.url = (
             "https://drive.google.com/drive/folders/1lcZw4lMlMww5zzeZBLCd6-cI71lKvqNg"
         )
-        self.subfolder_url = self.create_subfolder(self.url, "SlovarikDB")
 
     def _authenticate(self):
         credentials = service_account.Credentials.from_service_account_file(
@@ -30,17 +40,56 @@ class GoogleDriveUploader:
             )
         return match.group(1)
 
-    def upload_file(self, folder_url, filename, file_bytes):
+    def upload_or_rewrite_file(self, folder_url, filename, file_bytes, mode: Mode):
         folder_id = self._parse_folder_id(folder_url)
-        file_metadata = {"name": filename, "parents": [folder_id]}
+        file_metadata = {"name": filename}
         media = MediaIoBaseUpload(
             BytesIO(file_bytes), mimetype="application/octet-stream", resumable=True
         )
-        request = self.service.files().create(
-            body=file_metadata, media_body=media, fields="id"
+        if mode == Mode.RW:
+            query = f"name='{filename}' and '{folder_id}' in parents"
+            response = self.service.files().list(q=query).execute()
+            files = response.get("files", [])
+
+            if files:
+                file_id = files[0]["id"]
+                updated_file = (
+                    self.service.files()
+                    .update(
+                        fileId=file_id,
+                        body=file_metadata,
+                        media_body=media,
+                        addParents=folder_id,
+                    )
+                    .execute()
+                )
+
+                return updated_file.get("id")
+
+        file_metadata["parents"] = [folder_id]
+        created_file = (
+            self.service.files()
+            .create(body=file_metadata, media_body=media, fields="id")
+            .execute()
         )
-        response = request.execute()
-        return response.get("id")
+
+        return created_file.get("id")
+
+    def get_or_create_subfolder(self, parent_folder_url, subfolder_name):
+        parent_id = self._parse_folder_id(parent_folder_url)
+
+        query = f"name='{subfolder_name}' and '{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        response = (
+            self.service.files()
+            .list(q=query, spaces="drive", fields="files(id, name)")
+            .execute()
+        )
+
+        folders = response.get("files", [])
+        if folders:
+            return f"https://drive.google.com/drive/folders/{folders[0]['id']}"
+
+        return self.create_subfolder(parent_folder_url, subfolder_name)
 
     def create_subfolder(self, parent_folder_url, subfolder_name):
         parent_id = self._parse_folder_id(parent_folder_url)
