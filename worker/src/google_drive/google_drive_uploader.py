@@ -23,7 +23,7 @@ class GoogleDriveUploader:
         self.credentials_path = credentials_path
         self.service = self._authenticate()
         self.url = (
-            "https://drive.google.com/drive/folders/1lcZw4lMlMww5zzeZBLCd6-cI71lKvqNg"
+            "https://drive.google.com/drive/folders/1tJEzlnHm3dvpVYzlhG_pcAn5TWWPVcHc"
         )
 
     def _authenticate(self):
