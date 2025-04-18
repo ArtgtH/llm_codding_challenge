@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class ChatTimers:
+    """
+    Класс-таймер для работы с отслеживанием времени последнего отправленного сообщения
+    После истечения таймера отправляет отчет из БД в чат
+    Оперирует асинхронными тасками
+    """
     def __init__(self, bot: Bot):
         self.timers: Dict[int, asyncio.Task] = {}
         self.lock = asyncio.Lock()
