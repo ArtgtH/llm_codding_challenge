@@ -3,11 +3,12 @@ import logging
 from datetime import timedelta
 
 from aiogram import Bot, Dispatcher, types
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from configs.config import settings
-from db.base import async_session_factory, init_db
+from db.base import init_db
 from db.repositories import MessageRepository
-from middlewares import RabbitMQMiddleware
+from middlewares import RabbitMQMiddleware, DbSessionMiddleware
 from rabbit.service import RabbitMQService
 from timer import ChatTimers
 
@@ -27,23 +28,23 @@ timer = ChatTimers(bot)
 async def handle_message(
     message: types.Message,
     publisher: RabbitMQService,
+    db: AsyncSession,
 ) -> None:
     try:
-        async with async_session_factory() as db:
-            await MessageRepository(db).create_message(
-                message.chat.id,
-                message.chat.title,
-                message.from_user.id,
-                message.from_user.full_name,
-                message.text or "",
-            )
-
         await publisher.send_message(
             str(message.chat.id),
             message.chat.title,
             message.from_user.full_name,
             message.text,
             (message.date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S"),
+        )
+
+        await MessageRepository(db).create_message(
+            message.chat.id,
+            message.chat.title,
+            message.from_user.id,
+            message.from_user.full_name,
+            message.text,
         )
 
         await timer.reset_timer(message.chat.id)
@@ -62,6 +63,7 @@ async def main():
         settings.RABBITMQ_URL, settings.RABBITMQ_MESSAGE_QUEUE
     )
     dp.message.middleware(RabbitMQMiddleware(rabbit_service))
+    dp.message.middleware(DbSessionMiddleware())
 
     await init_db()
 
