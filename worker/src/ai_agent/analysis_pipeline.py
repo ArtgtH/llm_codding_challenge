@@ -78,7 +78,7 @@ def construct_prompt(text: str, schema: str, extra_data: Optional[dict]) -> str:
                         sub_names.append(name)
                 known_subdivisions_list = list(
                     set(sub_names)
-                )  # Convert to set then back to list to get unique names
+                ) 
         except Exception as e:
             logger.warning(f"Error processing known subdivisions list: {e}")
 
@@ -217,7 +217,6 @@ class AnalysisPipeline:
         if not MISTRAL_API_KEY:
             raise ValueError("MISTRAL_API_KEY environment variable not set.")
 
-        # Simple rate limiter (e.g., 1 request per second) - adjust as needed
         self.rate_limiter = RateLimiter(rate=1)
         self.client = MistralAnalysisClient(
             api_key=MISTRAL_API_KEY, rate_limiter=self.rate_limiter
@@ -236,7 +235,7 @@ class AnalysisPipeline:
         try:
             response_data = self.client.analyze(
                 text=text, prompt=prompt
-            )  # Pass constructed prompt
+            )  
 
             if not response_data or "error" in response_data:
                 logger.error(f"Analysis failed or returned error: {response_data}")
@@ -294,7 +293,7 @@ class AnalysisPipeline:
                                     f"Could not parse date format: {op_data['date']}"
                                 )
                                 op_data["date"] = (
-                                    message_date  # Set to None if parsing fails
+                                    message_date 
                                 )
                         except ValueError:
                             logger.warning(
@@ -347,7 +346,7 @@ class AnalysisPipeline:
                     ValueError,
                     TypeError,
                     KeyError,
-                ) as e:  # Catch potential type/key errors during processing
+                ) as e: 
                     logger.error(
                         f"Data type, format, or key error during processing {op_data}: {e}"
                     )
@@ -357,5 +356,5 @@ class AnalysisPipeline:
         except Exception as e:
             logger.exception(
                 f"Unexpected error during analysis pipeline: {e}"
-            )  # Log full traceback
+            )
             return []
