@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -131,7 +130,7 @@ def process_message(message: MessageDTO) -> bytes | None:
 
         if drive_uploader:
             try:
-                team_name = os.environ.get("TEAM_NAME", "AgroTeam")
+                team_name = "SlovarikDB"
                 save_excel_report(
                     excel_bytes=excel_bytes,
                     team_name=team_name,
